@@ -770,11 +770,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 1e22f58f-f5aa-427f-8ca7-7f5f0d270b6c
+  cloudProjectId: 
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Cosmo Conquest 2025-03-10_10-51-39
-  organizationId: unity_dcd99f40e621387335cf
+  projectName: 
+  organizationId: 
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
