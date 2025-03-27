@@ -21,6 +21,9 @@ public class InputDronesScript : MonoBehaviour
     public AudioSource audioSource;
     public AudioClip clickSound;
 
+    [Header("Score Calculation")]
+    public ScoreCalc scoreCalculator;
+
     void Start()
     {
         if (submitButton != null)
@@ -37,6 +40,7 @@ public class InputDronesScript : MonoBehaviour
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
+
     }
 
     public void ValidateDistribution()
@@ -66,6 +70,15 @@ public class InputDronesScript : MonoBehaviour
         }
 
         DisplaySuccess("Distribution successful!");
+
+        if (scoreCalculator != null) // Перевірка, чи призначений скрипт
+        {
+            scoreCalculator.SetPlayerTeamDrones(kronus, lyrion, mystara, eclipsia, fiora);
+        }
+        else
+        {
+            Debug.LogError("ScoreCalc script not assigned in Inspector!");
+        }
     }
 
     private bool TryParseInputs(out int eclipsia, out int mystara, out int lyrion, out int kronus, out int fiora)
