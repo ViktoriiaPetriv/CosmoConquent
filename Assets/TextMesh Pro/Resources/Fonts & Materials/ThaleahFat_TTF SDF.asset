@@ -2484,7 +2484,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: ThaleahFat_TTF SDF Material
   m_Shader: {fileID: 4800000, guid: 68e6db2ebdc24f95958faec2be5558d6, type: 3}
-  m_Parent: {fileID: 2100000, guid: 345ddacf019a25b469469c7e1f5344cd, type: 2}
+  m_Parent: {fileID: 2100000, guid: b4dd706a94b009d44975c66accb961f5, type: 2}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - GLOW_ON
@@ -2511,7 +2511,7 @@ Material:
     - _UnderlayOffsetX: 0
     - _UnderlayOffsetY: 0
     m_Colors:
-    - _GlowColor: {r: 1, g: 0.6221865, b: 0.51886785, a: 0.5}
-    - _OutlineColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlowColor: {r: 0.690566, g: 0.690566, b: 0.690566, a: 0.5}
+    - _OutlineColor: {r: 1, g: 0.61698115, b: 0.61698115, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
