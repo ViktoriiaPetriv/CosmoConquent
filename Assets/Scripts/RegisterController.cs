@@ -11,22 +11,37 @@ public class RegisterUI : MonoBehaviour
     public TMP_InputField firstNameInput;
     public TMP_InputField lastNameInput;
     public TMP_Text statusText;
+
+    [Header("Buttons")]
     public Button registerButton;
+    public Button openButton;
+    public Button closeButton;
 
     [Header("Server URL")]
-    public string registerUrl = "https://yourserver.com/register.php"; // заміни на свій URL
+    public string registerUrl = ""; 
 
     void Start()
     {
-        // Прив'язуємо дію до кнопки, якщо не зроблено в інспекторі
         if (registerButton != null)
             registerButton.onClick.AddListener(OnRegisterClick);
+
+        if (openButton != null)
+            openButton.onClick.AddListener(OpenPanel);
+
+        if (closeButton != null)
+            closeButton.onClick.AddListener(ClosePanel);
+
+        registerPanel.SetActive(false);
+
+        if (statusText != null)
+            statusText.text = "Register please!";
     }
 
     public void OpenPanel()
     {
         registerPanel.SetActive(true);
         ClearForm();
+        statusText.text = "Register Please";
     }
 
     public void ClosePanel()
@@ -74,6 +89,5 @@ public class RegisterUI : MonoBehaviour
     {
         firstNameInput.text = "";
         lastNameInput.text = "";
-        statusText.text = "";
     }
 }
