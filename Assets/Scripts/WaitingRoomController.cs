@@ -1,112 +1,139 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using UnityEngine.Events;
 
-public class WaitingRoomManager : MonoBehaviour
+public class WaitingScreenManager : MonoBehaviour
 {
-    [Header("UI Panels")]
-    public GameObject registerPanel;
-    public GameObject waitingPanel;
+    [Header("UI References")]
+    [SerializeField] private GameObject waitingScreen;
+    [SerializeField] private TextMeshProUGUI timerText;
+    [SerializeField] private TextMeshProUGUI statusText;
+    [SerializeField] private GameObject timerObject;
+    [SerializeField] private GameObject notEnoughPlayersObject;
 
-    [Header("UI Texts")]
-    public TMP_Text timerText;
-    public TMP_Text statusText;
+    [Header("Timer Settings")]
+    [SerializeField] private float waitingTime = 180f;
 
-    [Header("Game Settings")]
-    public int requiredPlayers = 2;
-    public float waitTime = 180f; 
+    [Header("Events")]
+    public UnityEvent onTimerComplete;
 
-    private int currentPlayers = 0;
-    private Vector3 originalScale;
+    private float currentTime;
+    private bool isTimerRunning = false;
+    private int connectedPlayers = 0;
+    private const int REQUIRED_PLAYERS = 2;
 
-    private void Start()
+    private void Awake()
     {
-        if (waitingPanel == null)
-            waitingPanel = GameObject.Find("WaitingWindow");
-
-        if (registerPanel == null)
-            registerPanel = GameObject.Find("RegisterWindow");
-
-        if (timerText == null)
-            timerText = GameObject.Find("TimerText").GetComponent<TMP_Text>();
-
-        if (statusText == null)
-            statusText = GameObject.Find("StatusText").GetComponent<TMP_Text>();
-
-        if (timerText != null)
-            originalScale = timerText.transform.localScale;
-
-        waitingPanel.SetActive(false);
+        if (waitingScreen != null)
+            waitingScreen.SetActive(false);
     }
 
-    public void OnPlayerRegistered()
+    public void ShowWaitingScreen()
     {
-        currentPlayers++;
-
-        if (!registerPanel.activeSelf && currentPlayers >= requiredPlayers)
+        if (waitingScreen != null)
         {
-            StartCoroutine(StartCountdown());
+            waitingScreen.SetActive(true);
+
+            connectedPlayers++;
+
+            CheckPlayerCount();
+        }
+    }
+
+    public void CheckPlayerCount()
+    {
+        if (connectedPlayers >= REQUIRED_PLAYERS)
+        {
+            timerObject.SetActive(true);
+            notEnoughPlayersObject.SetActive(false);
+
+            if (!isTimerRunning)
+            {
+                StartTimer();
+            }
         }
         else
         {
-            ShowWaitingPanel("Not enough players");
+            timerObject.SetActive(false);
+            notEnoughPlayersObject.SetActive(true);
+            statusText.text = "Waiting for players to connect...";
         }
     }
 
-    public void OnRegisterPanelClosed()
+    public void PlayerConnected()
     {
-        registerPanel.SetActive(false);
+        connectedPlayers++;
+        CheckPlayerCount();
+    }
+    public void TestAddPlayer()
+    {
+        PlayerConnected();
+    }
+    public void PlayerDisconnected()
+    {
+        if (connectedPlayers > 0)
+            connectedPlayers--;
 
-        if (currentPlayers >= requiredPlayers)
+        CheckPlayerCount();
+
+        if (connectedPlayers < REQUIRED_PLAYERS && isTimerRunning)
         {
-            StartCoroutine(StartCountdown());
-        }
-        else
-        {
-            ShowWaitingPanel("Not enough players");
+            StopTimer();
         }
     }
 
-    private void ShowWaitingPanel(string message)
+    private void StartTimer()
     {
-        waitingPanel.SetActive(true);
-        statusText.text = message;
-        timerText.text = "";
+        currentTime = waitingTime;
+        isTimerRunning = true;
+        StartCoroutine(CountdownTimer());
     }
 
-    private IEnumerator StartCountdown()
+    private void StopTimer()
     {
-        waitingPanel.SetActive(true);
-        statusText.text = "Waiting for players...";
+        isTimerRunning = false;
+        StopAllCoroutines();
+    }
 
-        float timeRemaining = waitTime;
-
-        while (timeRemaining > 0)
+    private IEnumerator CountdownTimer()
+    {
+        while (currentTime > 0 && isTimerRunning)
         {
-            int minutes = Mathf.FloorToInt(timeRemaining / 60);
-            int seconds = Mathf.FloorToInt(timeRemaining % 60);
-            timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+            UpdateTimerDisplay();
 
-            AnimateTimer();
             yield return new WaitForSeconds(1f);
-            timeRemaining -= 1f;
+            currentTime--;
         }
 
-        waitingPanel.SetActive(false);
-        StartGame();
-    }
-
-    private void AnimateTimer()
-    {
-        if (timerText != null)
+        if (isTimerRunning)
         {
-            float pulse = 1f + Mathf.Sin(Time.time * 4f) * 0.05f;
-            timerText.transform.localScale = originalScale * pulse;
+            TimerComplete();
         }
     }
-
-    private void StartGame()
+    public void HideWaitingScreen()
     {
-        Debug.Log("Game is starting!");
+        if (waitingScreen != null)
+            waitingScreen.SetActive(false);
+    }
+    private void UpdateTimerDisplay()
+    {
+        int minutes = Mathf.FloorToInt(currentTime / 60);
+        int seconds = Mathf.FloorToInt(currentTime % 60);
+
+        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+    }
+
+    private void TimerComplete()
+    {
+        isTimerRunning = false;
+        waitingScreen.SetActive(false);
+        onTimerComplete?.Invoke();
+    }
+
+    public void SimulateRegistration()
+    {
+        ShowWaitingScreen();
     }
 }
