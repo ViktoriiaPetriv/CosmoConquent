@@ -7,8 +7,7 @@ public class RegisterUI : MonoBehaviour
 {
     [Header("UI References")]
     public GameObject registerPanel;
-    public TMP_InputField firstNameInput;
-    public TMP_InputField lastNameInput;
+    public TMP_InputField usernameInput;
     public TMP_Text statusText;
     [Header("Buttons")]
     public Button registerButton;
@@ -17,7 +16,7 @@ public class RegisterUI : MonoBehaviour
     [Header("Waiting Screen")]
     public WaitingScreenManager waitingScreenManager;
     [Header("Server URL")]
-    public string registerUrl = "";
+    private string registerUrl = "https://e660-213-109-232-105.ngrok-free.app/register.php";
     void Start()
     {
         if (registerButton != null)
@@ -51,31 +50,46 @@ public class RegisterUI : MonoBehaviour
     }
     IEnumerator SendRegisterRequest()
     {
-        string firstName = firstNameInput.text.Trim();
-        string lastName = lastNameInput.text.Trim();
-        if (string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(lastName))
+        string username = usernameInput.text.Trim();
+
+        if (string.IsNullOrEmpty(username))
         {
-            statusText.text = "Please enter both first and last name.";
+            statusText.text = "Please enter username.";
             yield break;
         }
         WWWForm form = new WWWForm();
-        form.AddField("first_name", firstName);
-        form.AddField("last_name", lastName);
+        form.AddField("username", username);
+
+
         using (UnityWebRequest www = UnityWebRequest.Post(registerUrl, form))
         {
             yield return www.SendWebRequest();
             if (www.result == UnityWebRequest.Result.Success)
             {
-                statusText.text = "Successfully registered!";
-                yield return new WaitForSeconds(1.5f);
-                ClosePanel();
-                if (waitingScreenManager != null)
+                string responseText = www.downloadHandler.text;
+
+                if (responseText.Contains("player_id"))
                 {
-                    waitingScreenManager.ShowWaitingScreen();
+                    statusText.text = "Successfully registered!";
+                    yield return new WaitForSeconds(1.5f);
+                    ClosePanel();
+
+                    if (waitingScreenManager != null)
+                    {
+                        waitingScreenManager.ShowWaitingScreen();
+                    }
+                    else
+                    {
+                        Debug.LogError("WaitingScreenManager reference is missing!");
+                    }
+                }
+                else if (responseText.Contains("exists") || responseText.Contains("taken"))
+                {
+                    statusText.text = "Username already exists. Please choose another one.";
                 }
                 else
                 {
-                    Debug.LogError("WaitingScreenManager reference is missing!");
+                    statusText.text = "Registration error: " + responseText;
                 }
             }
             else
@@ -87,7 +101,6 @@ public class RegisterUI : MonoBehaviour
 
     void ClearForm()
     {
-        firstNameInput.text = "";
-        lastNameInput.text = "";
+        usernameInput.text = "";
     }
 }
