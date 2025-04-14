@@ -31,7 +31,7 @@ public class RegisterUI : MonoBehaviour
         if (closeButton != null)
             closeButton.onClick.AddListener(ClosePanel);
 
-        registerPanel.SetActive(false);
+        registerPanel.SetActive(true);
 
         if (statusText != null)
             statusText.text = "Register please!";
