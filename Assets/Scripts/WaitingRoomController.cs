@@ -3,6 +3,9 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections;
 using UnityEngine.Events;
+using System;
+using UnityEngine.Networking;
+using System.Collections.Generic;
 
 public class WaitingScreenManager : MonoBehaviour
 {
@@ -12,6 +15,7 @@ public class WaitingScreenManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private GameObject timerObject;
     [SerializeField] private GameObject notEnoughPlayersObject;
+    [SerializeField] private int playerId;
 
     [Header("Timer Settings")]
     [SerializeField] private float waitingTime = 180f;
@@ -23,9 +27,11 @@ public class WaitingScreenManager : MonoBehaviour
     private bool isTimerRunning = false;
     private int connectedPlayers = 0;
     private const int REQUIRED_PLAYERS = 2;
+    private int gameId = 0;
 
     private void Awake()
     {
+        playerId = PlayerPrefs.GetInt("player_id", 0);
         if (waitingScreen != null)
             waitingScreen.SetActive(false);
     }
@@ -35,10 +41,7 @@ public class WaitingScreenManager : MonoBehaviour
         if (waitingScreen != null)
         {
             waitingScreen.SetActive(true);
-
-            connectedPlayers++;
-
-            CheckPlayerCount();
+            StartCoroutine(CheckStartGame());
         }
     }
 
@@ -47,11 +50,16 @@ public class WaitingScreenManager : MonoBehaviour
         if (connectedPlayers >= REQUIRED_PLAYERS)
         {
             timerObject.SetActive(true);
-            notEnoughPlayersObject.SetActive(false);
+            notEnoughPlayersObject.SetActive(true);
+            statusText.text = $"Connected: {connectedPlayers}/5";
 
             if (!isTimerRunning)
             {
                 StartTimer();
+            }
+            else if (connectedPlayers >= 5 && currentTime > 5f)
+            {
+                currentTime = 5f;
             }
         }
         else
@@ -59,28 +67,6 @@ public class WaitingScreenManager : MonoBehaviour
             timerObject.SetActive(false);
             notEnoughPlayersObject.SetActive(true);
             statusText.text = "Waiting for players to connect...";
-        }
-    }
-
-    public void PlayerConnected()
-    {
-        connectedPlayers++;
-        CheckPlayerCount();
-    }
-    public void TestAddPlayer()
-    {
-        PlayerConnected();
-    }
-    public void PlayerDisconnected()
-    {
-        if (connectedPlayers > 0)
-            connectedPlayers--;
-
-        CheckPlayerCount();
-
-        if (connectedPlayers < REQUIRED_PLAYERS && isTimerRunning)
-        {
-            StopTimer();
         }
     }
 
@@ -95,6 +81,7 @@ public class WaitingScreenManager : MonoBehaviour
     {
         isTimerRunning = false;
         StopAllCoroutines();
+        StartCoroutine(CheckStartGame());
     }
 
     private IEnumerator CountdownTimer()
@@ -102,26 +89,26 @@ public class WaitingScreenManager : MonoBehaviour
         while (currentTime > 0 && isTimerRunning)
         {
             UpdateTimerDisplay();
-
             yield return new WaitForSeconds(1f);
             currentTime--;
+
+            if (connectedPlayers >= 5 && currentTime > 5f)
+            {
+                currentTime = 5f;
+            }
         }
 
         if (isTimerRunning)
         {
-            TimerComplete();
+            isTimerRunning = false;
+            StartCoroutine(SendStartRequest());
         }
     }
-    public void HideWaitingScreen()
-    {
-        if (waitingScreen != null)
-            waitingScreen.SetActive(false);
-    }
+
     private void UpdateTimerDisplay()
     {
         int minutes = Mathf.FloorToInt(currentTime / 60);
         int seconds = Mathf.FloorToInt(currentTime % 60);
-
         timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
     }
 
@@ -132,8 +119,127 @@ public class WaitingScreenManager : MonoBehaviour
         onTimerComplete?.Invoke();
     }
 
-    public void SimulateRegistration()
+    public void HideWaitingScreen()
     {
-        ShowWaitingScreen();
+        if (waitingScreen != null)
+            waitingScreen.SetActive(false);
     }
+
+    [System.Serializable]
+    public class PlayerInfo
+    {
+        public int id;
+        public string username;
+    }
+
+    [System.Serializable]
+    public class StartGameResponse
+    {
+        public bool start;
+        public int game_id;
+        public int players;
+        public string start_time;
+        public string error;
+        public List<PlayerInfo> player_list;
+    }
+
+    private IEnumerator SendStartRequest()
+    {
+        WWWForm form = new WWWForm();
+        form.AddField("player_id", playerId);
+        form.AddField("force_start", "true");
+
+        UnityWebRequest www = UnityWebRequest.Post("https://6102-213-109-232-105.ngrok-free.app/start_game.php", form);
+        yield return www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.Success)
+        {
+            TimerComplete();
+        }
+        else
+        {
+            statusText.text = "Failed to start game.";
+        }
+    }
+
+    private IEnumerator CheckStartGame()
+    {
+        while (true)
+        {
+            playerId = PlayerPrefs.GetInt("player_id", 0);
+
+            WWWForm form = new WWWForm();
+            form.AddField("player_id", playerId);
+
+            UnityWebRequest www = UnityWebRequest.Post("https://6102-213-109-232-105.ngrok-free.app/start_game.php", form);
+            yield return www.SendWebRequest();
+
+            string responseText = www.downloadHandler.text;
+
+            if (responseText.Contains("Fatal error") || responseText.Contains("<"))
+            {
+                Debug.LogError("Server returned an error: " + responseText);
+                statusText.text = "Server error. Please try again.";
+                yield return new WaitForSeconds(5f);
+                continue;
+            }
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                bool jsonParseSuccess = false;
+                StartGameResponse data = null;
+
+                try
+                {
+                    data = JsonUtility.FromJson<StartGameResponse>(responseText);
+                    jsonParseSuccess = true;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("JSON parsing error: " + e.Message);
+                    statusText.text = "Communication error. Retrying...";
+                }
+
+                if (jsonParseSuccess && data != null)
+                {
+                    if (!string.IsNullOrEmpty(data.error))
+                    {
+                        statusText.text = "Error: " + data.error;
+                    }
+                    else
+                    {
+                        gameId = data.game_id;
+                        connectedPlayers = data.players;
+
+                        if (statusText != null)
+                        {
+                            string newStatusText = $"Connected: {connectedPlayers}/5";
+                            statusText.text = newStatusText;
+                        }
+
+                        if (data.start)
+                        {
+                            if (!isTimerRunning)
+                            {
+                                TimerComplete();
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            CheckPlayerCount();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogError("Network error: " + www.error);
+                statusText.text = "Network error. Retrying...";
+            }
+
+            yield return new WaitForSeconds(5f);
+        }
+    }
+
 }

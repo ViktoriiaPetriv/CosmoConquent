@@ -16,7 +16,16 @@ public class RegisterUI : MonoBehaviour
     [Header("Waiting Screen")]
     public WaitingScreenManager waitingScreenManager;
     [Header("Server URL")]
-    private string registerUrl = "https://e660-213-109-232-105.ngrok-free.app/register.php";
+    private string registerUrl = "https://6102-213-109-232-105.ngrok-free.app/register.php";
+
+
+    [System.Serializable]
+    public class RegisterResponse
+    {
+        public int player_id;
+        public string error;
+    }
+
     void Start()
     {
         if (registerButton != null)
@@ -51,25 +60,47 @@ public class RegisterUI : MonoBehaviour
     IEnumerator SendRegisterRequest()
     {
         string username = usernameInput.text.Trim();
-
         if (string.IsNullOrEmpty(username))
         {
             statusText.text = "Please enter username.";
             yield break;
         }
+
         WWWForm form = new WWWForm();
         form.AddField("username", username);
 
+        UnityWebRequest www = UnityWebRequest.Post(registerUrl, form);
+        yield return www.SendWebRequest();
 
-        using (UnityWebRequest www = UnityWebRequest.Post(registerUrl, form))
+        if (www.result == UnityWebRequest.Result.Success)
         {
-            yield return www.SendWebRequest();
-            if (www.result == UnityWebRequest.Result.Success)
-            {
-                string responseText = www.downloadHandler.text;
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Register response: " + responseText);
 
-                if (responseText.Contains("player_id"))
+            bool parseSuccess = false;
+            RegisterResponse response = null;
+
+            try
+            {
+                response = JsonUtility.FromJson<RegisterResponse>(responseText);
+                parseSuccess = true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("JSON parsing error: " + e.Message);
+                parseSuccess = false;
+            }
+
+            if (parseSuccess)
+            {
+                if (response.error != null && !string.IsNullOrEmpty(response.error))
                 {
+                    statusText.text = "Error: " + response.error;
+                }
+                else if (response.player_id > 0)
+                {
+                    PlayerPrefs.SetInt("player_id", response.player_id);
+                    PlayerPrefs.Save();
                     statusText.text = "Successfully registered!";
                     yield return new WaitForSeconds(1.5f);
                     ClosePanel();
@@ -83,19 +114,27 @@ public class RegisterUI : MonoBehaviour
                         Debug.LogError("WaitingScreenManager reference is missing!");
                     }
                 }
-                else if (responseText.Contains("exists") || responseText.Contains("taken"))
+                else
+                {
+                    statusText.text = "Registration failed. Please try again.";
+                }
+            }
+            else
+            {
+                // Handle cases where HTML error might be returned
+                if (responseText.Contains("exists") || responseText.Contains("taken"))
                 {
                     statusText.text = "Username already exists. Please choose another one.";
                 }
                 else
                 {
-                    statusText.text = "Registration error: " + responseText;
+                    statusText.text = "Server error. Please try again.";
                 }
             }
-            else
-            {
-                statusText.text = "Error: " + www.error;
-            }
+        }
+        else
+        {
+            statusText.text = "Network error: " + www.error;
         }
     }
 

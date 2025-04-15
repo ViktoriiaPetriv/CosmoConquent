@@ -6879,6 +6879,7 @@ MonoBehaviour:
   statusText: {fileID: 2122057981}
   timerObject: {fileID: 1305834428}
   notEnoughPlayersObject: {fileID: 36439553}
+  playerId: 0
   waitingTime: 180
   onTimerComplete:
     m_PersistentCalls:
