@@ -149,7 +149,7 @@ public class WaitingScreenManager : MonoBehaviour
         form.AddField("player_id", playerId);
         form.AddField("force_start", "true");
 
-        UnityWebRequest www = UnityWebRequest.Post("https://6102-213-109-232-105.ngrok-free.app/start_game.php", form);
+        UnityWebRequest www = UnityWebRequest.Post("https://c660-46-219-132-106.ngrok-free.app/start_game.php", form);
         yield return www.SendWebRequest();
 
         if (www.result == UnityWebRequest.Result.Success)
@@ -166,12 +166,12 @@ public class WaitingScreenManager : MonoBehaviour
     {
         while (true)
         {
-            playerId = PlayerPrefs.GetInt("player_id", 0);
+            playerId = SessionData.playerId;
 
             WWWForm form = new WWWForm();
             form.AddField("player_id", playerId);
 
-            UnityWebRequest www = UnityWebRequest.Post("https://6102-213-109-232-105.ngrok-free.app/start_game.php", form);
+            UnityWebRequest www = UnityWebRequest.Post("https://c660-46-219-132-106.ngrok-free.app/start_game.php", form);
             yield return www.SendWebRequest();
 
             string responseText = www.downloadHandler.text;
@@ -210,6 +210,7 @@ public class WaitingScreenManager : MonoBehaviour
                     {
                         gameId = data.game_id;
                         connectedPlayers = data.players;
+                        SessionData.gameId = gameId;
 
                         if (statusText != null)
                         {

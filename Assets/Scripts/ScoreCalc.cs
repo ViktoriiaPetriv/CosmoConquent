@@ -2,49 +2,134 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
-using Unity.VisualScripting;
+using UnityEngine.Networking;
 using TMPro;
 using System.Collections;
 
 public class ScoreCalc : MonoBehaviour
 {
-    [Header("UI Elements")]
-    [SerializeField] private ResultsWindow myResultsWindow;
+    private int gameId; 
+    public Transform resultsTableParent;
+    public GameObject resultRowPrefab;
+    private List<PlayerData> players;
+    private bool calculationDone = false;
 
-    public Transform resultsTableParent; 
-    public GameObject resultRowPrefab;  
-
-
-    [Header("Audio")]
-    public AudioSource audioSource;
-    public AudioClip clickSound;
-    public List<int[]> teamDroneDistributions = new List<int[]>();
-    public string[] planets = { "Kronus", "Lyrion", "Mystara", "Eclipsia", "Fiora" };
-    public int teamCount = 5;
-
-
-
-    public void SetPlayerTeamDrones(int kronus, int lyrion, int mystara, int eclipsia, int fiora)
+    public void Start()
     {
+        
 
-        teamDroneDistributions.Clear();
+    }
 
-        teamDroneDistributions.Add(new int[] { 350, 200, 200, 150, 100 });
-        teamDroneDistributions.Add(new int[] { 400, 300, 200, 100, 0 });   
-        teamDroneDistributions.Add(new int[] { 250, 220, 180, 180, 170 });
-        teamDroneDistributions.Add(new int[] { 300, 250, 190, 160, 100 });
-        teamDroneDistributions.Add(new int[] { kronus, lyrion, mystara, eclipsia, fiora });
+    public void BeginCheckingMoves()
+    {
+        gameId = SessionData.gameId;
+        if (gameId != -1)
+        {
+            StartCoroutine(CheckAllPlayersMovesRoutine(gameId));
+        }
+        else
+        {
+            Debug.LogError("Game ID is not found ó PlayerPrefs.");
+        }
+    }
 
+    private IEnumerator CheckAllPlayersMovesRoutine(int gameId)
+    {
+        while (true)
+        {
+            yield return StartCoroutine(GetPlayersDataFromServer(gameId));
 
-        teamCount = teamDroneDistributions.Count;
+            if (calculationDone)
+                break;
 
-        CalculateTeamScores();
+            yield return new WaitForSeconds(5f); 
+        }
     }
 
 
-    public void CalculateTeamScores()
+
+    public IEnumerator GetPlayersDataFromServer(int gameId)
     {
+        string url = $"https://c660-46-219-132-106.ngrok-free.app/get_results.php?game_id={gameId}";
+
+        using (UnityWebRequest www = UnityWebRequest.Get(url))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Error: " + www.error);
+            }
+            else
+            {
+                string jsonResponse = www.downloadHandler.text;
+                PlayerDataList playerDataList = JsonUtility.FromJson<PlayerDataList>("{\"players\":" + jsonResponse + "}");
+                players = new List<PlayerData>(playerDataList.players);
+
+                bool allPlayersSubmitted = players.All(p =>
+                    p.kronus != 0 &&
+                    p.lyrion != 0 &&
+                    p.mystara != 0 &&
+                    p.eclipsia != 0 &&
+                    p.fiora != 0
+                );
+
+                if (allPlayersSubmitted && !calculationDone)
+                {
+                    CalculateTeamScores(players);
+                    calculationDone = true;
+                }
+                else if (!allPlayersSubmitted)
+                {
+                    Debug.Log("Expecting other players...");
+                }
+            }
+        }
+    }
+
+
+
+
+    [Serializable]
+    public class PlayerData
+    {
+        public int player_id;
+        public string username;
+        public int kronus;
+        public int lyrion;
+        public int mystara;
+        public int eclipsia;
+        public int fiora;
+        public int score;
+    }
+
+
+    [Serializable]
+    public class PlayerDataList
+    {
+        public PlayerData[] players;
+    }
+
+
+    [Serializable]
+    public class PlayerDataListWrapper
+    {
+        public List<PlayerData> players;
+    }
+
+
+    public void CalculateTeamScores(List<PlayerData> players)
+    {
+        int teamCount = players.Count;
         int[] teamScores = new int[teamCount];
+        List<int[]> teamDroneDistributions = new List<int[]>();
+
+        foreach (var player in players)
+        {
+            teamDroneDistributions.Add(new int[] { player.kronus, player.lyrion, player.mystara, player.eclipsia, player.fiora });
+        }
+
+        string[] planets = { "Kronus", "Lyrion", "Mystara", "Eclipsia", "Fiora" };
 
         for (int firstTeam = 0; firstTeam < teamCount - 1; firstTeam++)
         {
@@ -89,115 +174,57 @@ public class ScoreCalc : MonoBehaviour
         {
             if (teamScores[team] == maxScore)
             {
-                winningTeams.Add(team + 1); 
+                winningTeams.Add(team + 1);
             }
-            
+
             Debug.Log($"Team {team + 1} total score: {teamScores[team]}");
         }
 
         Debug.Log($"Team(s) with the highest score: {string.Join(", ", winningTeams)} with score: {maxScore}");
-
+        StartCoroutine(UpdatePlayerScoresOnServer(players, teamScores));
         PopulateResultsTable(teamScores);
-        OpenResultsWindow(teamScores, winningTeams);
     }
 
-     private void OpenResultsWindow(int[] scores, List<int> winningTeams)
+    void PopulateResultsTable(int[] scores)
     {
-        string winnerText;
-        if (winningTeams.Count > 1)
+        foreach (Transform child in resultsTableParent)
         {
-            winnerText = "Teams " + string.Join(", ", winningTeams) + " Win!";
-        }
-        else
-        {
-            winnerText = $"Team {winningTeams[0]} Wins!";
+            Destroy(child.gameObject);
         }
 
-        myResultsWindow.gameObject.SetActive(true);
-        myResultsWindow.CloseButton.onClick.AddListener(CloseClicked);
-        myResultsWindow.winnerText.text = winnerText;
+        GameObject headerRow = Instantiate(resultRowPrefab, resultsTableParent);
+        TextMeshProUGUI teamHeader = headerRow.transform.GetChild(0).GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI pointsHeader = headerRow.transform.GetChild(1).GetComponent<TextMeshProUGUI>();
 
-        StartCoroutine(OpenWindowAnimation());
-        StartCoroutine(AnimateWinnerText());
-    }
+        teamHeader.text = "TEAM";
+        pointsHeader.text = "POINTS";
 
-
-    private void CloseClicked(){
-        myResultsWindow.gameObject.SetActive(false);
-        PlayClickSound();
-    }
-
-    private void PlayClickSound()
-    {
-        if (audioSource != null && clickSound != null)
+        for (int team = 0; team < scores.Length; team++)
         {
-            audioSource.PlayOneShot(clickSound);
+            GameObject row = Instantiate(resultRowPrefab, resultsTableParent);
+            row.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = $"Team {team + 1}";
+            row.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = scores[team].ToString();
         }
     }
 
-   private IEnumerator AnimateWinnerText()
-{
-    Vector3 originalScale = myResultsWindow.winnerText.transform.localScale;
-    Color originalColor = myResultsWindow.winnerText.color;
-
-    while (true)
+    IEnumerator UpdatePlayerScoresOnServer(List<PlayerData> players, int[] scores)
     {
-        float scaleFactor = Mathf.PingPong(Time.time * 0.2f, 0.1f) + 1f; 
-        myResultsWindow.winnerText.transform.localScale = originalScale * scaleFactor;
+        for (int i = 0; i < players.Count; i++)
+        {
+            WWWForm form = new WWWForm();
+            form.AddField("player_id", players[i].player_id);
+            form.AddField("score", scores[i]);
 
-        float colorValue = Mathf.PingPong(Time.time * 1.5f, 1f);  
-        Color color = Color.Lerp(Color.green, Color.yellow, colorValue);
-        myResultsWindow.winnerText.color = new Color(color.r, color.g, color.b, originalColor.a);
+            using (UnityWebRequest www = UnityWebRequest.Post("https://c660-46-219-132-106.ngrok-free.app/update_score.php", form))
+            {
+                yield return www.SendWebRequest();
 
-        yield return null;
-    }
-}
-
-private IEnumerator OpenWindowAnimation()
-{
-    Vector3 originalScale = myResultsWindow.transform.localScale;
-    myResultsWindow.transform.localScale = Vector3.zero; 
-
-    float duration = 0.25f; 
-    float elapsedTime = 0f;
-
-    while (elapsedTime < duration)
-    {
-        float scale = Mathf.Lerp(0f, 1f, elapsedTime / duration);
-        myResultsWindow.transform.localScale = originalScale * scale;
-        elapsedTime += Time.deltaTime;
-        yield return null;
+                if (www.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.LogError("Error score update: " + www.error);
+                }
+            }
+        }
     }
 
-    myResultsWindow.transform.localScale = originalScale;
 }
-
- void PopulateResultsTable(int[] scores)
-{
-    foreach (Transform child in resultsTableParent)
-    {
-        Destroy(child.gameObject);
-    }
-
-    GameObject headerRow = Instantiate(resultRowPrefab, resultsTableParent);
-    TextMeshProUGUI teamHeader = headerRow.transform.GetChild(0).GetComponent<TextMeshProUGUI>();
-    TextMeshProUGUI pointsHeader = headerRow.transform.GetChild(1).GetComponent<TextMeshProUGUI>();
-
-    teamHeader.text = "TEAM";
-    pointsHeader.text = "POINTS";
-
-    teamHeader.color = Color.green;
-    pointsHeader.color = Color.green;
-    teamHeader.fontStyle = FontStyles.Underline;
-    pointsHeader.fontStyle = FontStyles.Underline;
-
-    for (int team = 0; team < scores.Length; team++)
-    {
-        GameObject row = Instantiate(resultRowPrefab, resultsTableParent);
-        row.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = $"Team {team + 1}";
-        row.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = scores[team].ToString();
-    }
-}
-
-}
-

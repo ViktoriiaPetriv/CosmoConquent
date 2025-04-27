@@ -1,8 +1,9 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.Networking;
+using UnityEngine.InputSystem;
 
 public class InputDronesScript : MonoBehaviour
 {
@@ -24,6 +25,10 @@ public class InputDronesScript : MonoBehaviour
     [Header("Score Calculation")]
     public ScoreCalc scoreCalculator;
 
+    private string submitUrl = "https://c660-46-219-132-106.ngrok-free.app/submit_move.php";
+    private int gameId;
+    private int playerId;
+
     void Start()
     {
         if (submitButton != null)
@@ -33,14 +38,13 @@ public class InputDronesScript : MonoBehaviour
 
         if (errorText != null)
         {
-            errorText.text = "Enter the number of drones for each planet.\nThe sum of drones must be 1000\nfor the number of drones must follow the rule:\nKronus ≥ Lyrion ≥ Mystara ≥ Eclipsia ≥ Fiora";
+            errorText.text = "Enter the number of drones for each planet.\nThe sum of drones must be 1000\nand must follow the rule:\nKronus ≥ Lyrion ≥ Mystara ≥ Eclipsia ≥ Fiora";
         }
 
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
-
     }
 
     public void ValidateDistribution()
@@ -71,9 +75,15 @@ public class InputDronesScript : MonoBehaviour
 
         DisplaySuccess("Distribution successful!");
 
-        if (scoreCalculator != null) // Перевірка, чи призначений скрипт
+        gameId = SessionData.gameId;
+        playerId = SessionData.playerId;
+
+        StartCoroutine(SubmitMove(playerId, gameId, kronus, lyrion, mystara, eclipsia, fiora));
+        submitButton.interactable = false;
+
+        if (scoreCalculator != null && gameId != -1)
         {
-            scoreCalculator.SetPlayerTeamDrones(kronus, lyrion, mystara, eclipsia, fiora);
+            scoreCalculator.BeginCheckingMoves();
         }
         else
         {
@@ -83,32 +93,18 @@ public class InputDronesScript : MonoBehaviour
 
     private bool TryParseInputs(out int eclipsia, out int mystara, out int lyrion, out int kronus, out int fiora)
     {
-        eclipsia = 0;
-        mystara = 0;
-        lyrion = 0;
-        kronus = 0;
-        fiora = 0;
-
-        if (!TryParseInputField(eclipsiaInput, out eclipsia)) return false;
-        if (!TryParseInputField(mystaraInput, out mystara)) return false;
-        if (!TryParseInputField(lyrionInput, out lyrion)) return false;
-        if (!TryParseInputField(kronusInput, out kronus)) return false;
-        if (!TryParseInputField(fioraInput, out fiora)) return false;
-
-        return true;
+        eclipsia = mystara = lyrion = kronus = fiora = 0;
+        return TryParseInputField(eclipsiaInput, out eclipsia)
+            && TryParseInputField(mystaraInput, out mystara)
+            && TryParseInputField(lyrionInput, out lyrion)
+            && TryParseInputField(kronusInput, out kronus)
+            && TryParseInputField(fioraInput, out fiora);
     }
 
     private bool TryParseInputField(TMP_InputField inputField, out int value)
     {
         value = 0;
-        if (inputField == null || string.IsNullOrEmpty(inputField.text)) return false;
-
-        if (int.TryParse(inputField.text, out value))
-        {
-            return value >= 0 && value <= 1000;
-        }
-
-        return false;
+        return inputField != null && int.TryParse(inputField.text, out value) && value >= 0 && value <= 1000;
     }
 
     private void DisplayError(string message)
@@ -118,10 +114,7 @@ public class InputDronesScript : MonoBehaviour
             errorText.text = message;
             errorText.color = Color.red;
         }
-        else
-        {
-            Debug.LogError(message);
-        }
+        Debug.LogError(message);
     }
 
     private void DisplaySuccess(string message)
@@ -131,13 +124,32 @@ public class InputDronesScript : MonoBehaviour
             errorText.text = message;
             errorText.color = Color.green;
         }
-        else
-        {
-            Debug.Log(message);
-        }
+        Debug.Log(message);
     }
 
-    void Update()
+    IEnumerator SubmitMove(int playerId, int gameId, int kronus, int lyrion, int mystara, int eclipsia, int fiora)
     {
+        WWWForm form = new WWWForm();
+        form.AddField("game_id", gameId);
+        form.AddField("player_id", playerId);
+        form.AddField("kronus", kronus);
+        form.AddField("lyrion", lyrion);
+        form.AddField("mystara", mystara);
+        form.AddField("eclipsia", eclipsia);
+        form.AddField("fiora", fiora);
+
+        using (UnityWebRequest www = UnityWebRequest.Post(submitUrl, form))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log("Server response: " + www.downloadHandler.text);
+            }
+            else
+            {
+                Debug.LogError("Failed to submit move: " + www.error);
+            }
+        }
     }
 }

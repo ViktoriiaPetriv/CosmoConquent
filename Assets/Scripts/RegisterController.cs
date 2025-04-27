@@ -16,7 +16,7 @@ public class RegisterUI : MonoBehaviour
     [Header("Waiting Screen")]
     public WaitingScreenManager waitingScreenManager;
     [Header("Server URL")]
-    private string registerUrl = "https://6102-213-109-232-105.ngrok-free.app/register.php";
+    private string registerUrl = "https://c660-46-219-132-106.ngrok-free.app/register.php";
 
 
     [System.Serializable]
@@ -99,8 +99,8 @@ public class RegisterUI : MonoBehaviour
                 }
                 else if (response.player_id > 0)
                 {
-                    PlayerPrefs.SetInt("player_id", response.player_id);
-                    PlayerPrefs.Save();
+                    SessionData.playerId = response.player_id;
+
                     statusText.text = "Successfully registered!";
                     yield return new WaitForSeconds(1.5f);
                     ClosePanel();
