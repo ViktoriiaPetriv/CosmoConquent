@@ -16,7 +16,7 @@ public class RegisterUI : MonoBehaviour
     [Header("Waiting Screen")]
     public WaitingScreenManager waitingScreenManager;
     [Header("Server URL")]
-    private string registerUrl = "https://c660-46-219-132-106.ngrok-free.app/register.php";
+    private string registerUrl = "https://6c0a-213-109-232-105.ngrok-free.app/register.php";
 
 
     [System.Serializable]
@@ -75,7 +75,7 @@ public class RegisterUI : MonoBehaviour
         if (www.result == UnityWebRequest.Result.Success)
         {
             string responseText = www.downloadHandler.text;
-            Debug.Log("Register response: " + responseText);
+            //Debug.Log("Register response: " + responseText);
 
             bool parseSuccess = false;
             RegisterResponse response = null;

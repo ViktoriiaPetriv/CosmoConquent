@@ -17,9 +17,6 @@ public class WaitingScreenManager : MonoBehaviour
     [SerializeField] private GameObject notEnoughPlayersObject;
     [SerializeField] private int playerId;
 
-    [Header("Timer Settings")]
-    [SerializeField] private float waitingTime = 180f;
-
     [Header("Events")]
     public UnityEvent onTimerComplete;
 
@@ -52,15 +49,6 @@ public class WaitingScreenManager : MonoBehaviour
             timerObject.SetActive(true);
             notEnoughPlayersObject.SetActive(true);
             statusText.text = $"Connected: {connectedPlayers}/5";
-
-            if (!isTimerRunning)
-            {
-                StartTimer();
-            }
-            else if (connectedPlayers >= 5 && currentTime > 5f)
-            {
-                currentTime = 5f;
-            }
         }
         else
         {
@@ -70,32 +58,24 @@ public class WaitingScreenManager : MonoBehaviour
         }
     }
 
-    private void StartTimer()
+    private void StartTimer(float startFrom)
     {
-        currentTime = waitingTime;
+        currentTime = startFrom;
         isTimerRunning = true;
         StartCoroutine(CountdownTimer());
     }
 
-    private void StopTimer()
-    {
-        isTimerRunning = false;
-        StopAllCoroutines();
-        StartCoroutine(CheckStartGame());
-    }
-
     private IEnumerator CountdownTimer()
     {
+        float startTime = Time.realtimeSinceStartup;
         while (currentTime > 0 && isTimerRunning)
         {
+            float elapsedTime = Time.realtimeSinceStartup - startTime;
+            currentTime = Mathf.Max(0f, currentTime - elapsedTime);
             UpdateTimerDisplay();
-            yield return new WaitForSeconds(1f);
-            currentTime--;
+            startTime = Time.realtimeSinceStartup;
 
-            if (connectedPlayers >= 5 && currentTime > 5f)
-            {
-                currentTime = 5f;
-            }
+            yield return null;
         }
 
         if (isTimerRunning)
@@ -149,7 +129,7 @@ public class WaitingScreenManager : MonoBehaviour
         form.AddField("player_id", playerId);
         form.AddField("force_start", "true");
 
-        UnityWebRequest www = UnityWebRequest.Post("https://c660-46-219-132-106.ngrok-free.app/start_game.php", form);
+        UnityWebRequest www = UnityWebRequest.Post("https://6c0a-213-109-232-105.ngrok-free.app/start_game.php", form);
         yield return www.SendWebRequest();
 
         if (www.result == UnityWebRequest.Result.Success)
@@ -171,7 +151,7 @@ public class WaitingScreenManager : MonoBehaviour
             WWWForm form = new WWWForm();
             form.AddField("player_id", playerId);
 
-            UnityWebRequest www = UnityWebRequest.Post("https://c660-46-219-132-106.ngrok-free.app/start_game.php", form);
+            UnityWebRequest www = UnityWebRequest.Post("https://6c0a-213-109-232-105.ngrok-free.app/start_game.php", form);
             yield return www.SendWebRequest();
 
             string responseText = www.downloadHandler.text;
@@ -214,13 +194,33 @@ public class WaitingScreenManager : MonoBehaviour
 
                         if (statusText != null)
                         {
-                            string newStatusText = $"Connected: {connectedPlayers}/5";
-                            statusText.text = newStatusText;
+                            statusText.text = $"Connected: {connectedPlayers}/5";
                         }
 
-                        if (data.start)
+                        if (connectedPlayers >= REQUIRED_PLAYERS)
                         {
-                            if (!isTimerRunning)
+                            CheckPlayerCount();
+                        }
+                        else
+                        {
+                            notEnoughPlayersObject.SetActive(true);
+                        }
+
+                        if (!string.IsNullOrEmpty(data.start_time))
+                        {
+                            DateTime serverTimeUtc = DateTime.UtcNow;
+                            DateTime startTimeUtc = DateTime.Parse(data.start_time).ToUniversalTime();
+
+                            float timeRemaining = (float)(startTimeUtc - serverTimeUtc).TotalSeconds;
+
+                            if (timeRemaining > 0)
+                            {
+                                if (!isTimerRunning)
+                                {
+                                    StartTimer(timeRemaining);
+                                }
+                            }
+                            else
                             {
                                 TimerComplete();
                                 break;
@@ -242,5 +242,4 @@ public class WaitingScreenManager : MonoBehaviour
             yield return new WaitForSeconds(5f);
         }
     }
-
 }

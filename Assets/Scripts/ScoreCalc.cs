@@ -50,7 +50,7 @@ public class ScoreCalc : MonoBehaviour
 
     public IEnumerator GetPlayersDataFromServer(int gameId)
     {
-        string url = $"https://c660-46-219-132-106.ngrok-free.app/get_results.php?game_id={gameId}";
+        string url = $"https://6c0a-213-109-232-105.ngrok-free.app/get_results.php?game_id={gameId}";
 
         using (UnityWebRequest www = UnityWebRequest.Get(url))
         {
@@ -67,12 +67,9 @@ public class ScoreCalc : MonoBehaviour
                 players = new List<PlayerData>(playerDataList.players);
 
                 bool allPlayersSubmitted = players.All(p =>
-                    p.kronus != 0 &&
-                    p.lyrion != 0 &&
-                    p.mystara != 0 &&
-                    p.eclipsia != 0 &&
-                    p.fiora != 0
+                    (p.kronus + p.lyrion + p.mystara + p.eclipsia + p.fiora) > 0
                 );
+
 
                 if (allPlayersSubmitted && !calculationDone)
                 {
@@ -215,7 +212,7 @@ public class ScoreCalc : MonoBehaviour
             form.AddField("player_id", players[i].player_id);
             form.AddField("score", scores[i]);
 
-            using (UnityWebRequest www = UnityWebRequest.Post("https://c660-46-219-132-106.ngrok-free.app/update_score.php", form))
+            using (UnityWebRequest www = UnityWebRequest.Post("https://6c0a-213-109-232-105.ngrok-free.app/update_score.php", form))
             {
                 yield return www.SendWebRequest();
 
