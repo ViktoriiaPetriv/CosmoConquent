@@ -47,14 +47,16 @@ public class WaitingScreenManager : MonoBehaviour
         if (connectedPlayers >= REQUIRED_PLAYERS)
         {
             timerObject.SetActive(true);
-            notEnoughPlayersObject.SetActive(true);
+            notEnoughPlayersObject.SetActive(true); 
             statusText.text = $"Connected: {connectedPlayers}/5";
+            statusText.color = Color.green;
         }
         else
         {
             timerObject.SetActive(false);
             notEnoughPlayersObject.SetActive(true);
             statusText.text = "Waiting for players to connect...";
+            statusText.color = Color.red;
         }
     }
 
@@ -129,7 +131,7 @@ public class WaitingScreenManager : MonoBehaviour
         form.AddField("player_id", playerId);
         form.AddField("force_start", "true");
 
-        UnityWebRequest www = UnityWebRequest.Post("https://6c0a-213-109-232-105.ngrok-free.app/start_game.php", form);
+        UnityWebRequest www = UnityWebRequest.Post("https://24b4-213-109-232-105.ngrok-free.app/start_game.php", form);
         yield return www.SendWebRequest();
 
         if (www.result == UnityWebRequest.Result.Success)
@@ -139,11 +141,19 @@ public class WaitingScreenManager : MonoBehaviour
         else
         {
             statusText.text = "Failed to start game.";
+            statusText.color = Color.red;
         }
     }
 
     private IEnumerator CheckStartGame()
     {
+        
+        timerObject.SetActive(false);
+        notEnoughPlayersObject.SetActive(true);
+        bool wasTimerVisible = false;
+        statusText.text = "";
+        int previousPlayerCount = 0;
+
         while (true)
         {
             playerId = SessionData.playerId;
@@ -151,7 +161,7 @@ public class WaitingScreenManager : MonoBehaviour
             WWWForm form = new WWWForm();
             form.AddField("player_id", playerId);
 
-            UnityWebRequest www = UnityWebRequest.Post("https://6c0a-213-109-232-105.ngrok-free.app/start_game.php", form);
+            UnityWebRequest www = UnityWebRequest.Post("https://24b4-213-109-232-105.ngrok-free.app/start_game.php", form);
             yield return www.SendWebRequest();
 
             string responseText = www.downloadHandler.text;
@@ -160,6 +170,7 @@ public class WaitingScreenManager : MonoBehaviour
             {
                 Debug.LogError("Server returned an error: " + responseText);
                 statusText.text = "Server error. Please try again.";
+                statusText.color = Color.red;
                 yield return new WaitForSeconds(5f);
                 continue;
             }
@@ -178,6 +189,7 @@ public class WaitingScreenManager : MonoBehaviour
                 {
                     Debug.LogError("JSON parsing error: " + e.Message);
                     statusText.text = "Communication error. Retrying...";
+                    statusText.color = Color.red;
                 }
 
                 if (jsonParseSuccess && data != null)
@@ -185,6 +197,7 @@ public class WaitingScreenManager : MonoBehaviour
                     if (!string.IsNullOrEmpty(data.error))
                     {
                         statusText.text = "Error: " + data.error;
+                        statusText.color = Color.red;
                     }
                     else
                     {
@@ -192,42 +205,42 @@ public class WaitingScreenManager : MonoBehaviour
                         connectedPlayers = data.players;
                         SessionData.gameId = gameId;
 
-                        if (statusText != null)
+                        // Only update UI when player count changes to prevent flickering
+                        if (connectedPlayers != previousPlayerCount)
                         {
-                            statusText.text = $"Connected: {connectedPlayers}/5";
+                            previousPlayerCount = connectedPlayers;
+                            CheckPlayerCount();
                         }
 
                         if (connectedPlayers >= REQUIRED_PLAYERS)
                         {
-                            CheckPlayerCount();
-                        }
-                        else
-                        {
-                            notEnoughPlayersObject.SetActive(true);
-                        }
-
-                        if (!string.IsNullOrEmpty(data.start_time))
-                        {
-                            DateTime serverTimeUtc = DateTime.UtcNow;
-                            DateTime startTimeUtc = DateTime.Parse(data.start_time).ToUniversalTime();
-
-                            float timeRemaining = (float)(startTimeUtc - serverTimeUtc).TotalSeconds;
-
-                            if (timeRemaining > 0)
+                            if (!string.IsNullOrEmpty(data.start_time))
                             {
-                                if (!isTimerRunning)
+                                DateTime serverTimeUtc = DateTime.UtcNow;
+                                DateTime startTimeUtc = DateTime.Parse(data.start_time).ToUniversalTime();
+
+                                float timeRemaining = (float)(startTimeUtc - serverTimeUtc).TotalSeconds;
+
+                                if (timeRemaining > 0)
                                 {
-                                    StartTimer(timeRemaining);
+                                    if (!isTimerRunning)
+                                    {
+                                        StartTimer(timeRemaining);
+                                        wasTimerVisible = true;
+                                    }
+                                }
+                                else
+                                {
+                                    TimerComplete();
+                                    break;
                                 }
                             }
-                            else
-                            {
-                                TimerComplete();
-                                break;
-                            }
                         }
-                        else
+                        else if (wasTimerVisible)
                         {
+                            // Player count dropped below required while timer was visible
+                            wasTimerVisible = false;
+                            isTimerRunning = false;
                             CheckPlayerCount();
                         }
                     }
@@ -237,6 +250,7 @@ public class WaitingScreenManager : MonoBehaviour
             {
                 Debug.LogError("Network error: " + www.error);
                 statusText.text = "Network error. Retrying...";
+                statusText.color = Color.red;
             }
 
             yield return new WaitForSeconds(5f);

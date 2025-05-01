@@ -25,7 +25,7 @@ public class InputDronesScript : MonoBehaviour
     [Header("Score Calculation")]
     public ScoreCalc scoreCalculator;
 
-    private string submitUrl = "https://6c0a-213-109-232-105.ngrok-free.app/submit_move.php";
+    private string submitUrl = "https://24b4-213-109-232-105.ngrok-free.app/submit_move.php";
     private int gameId;
     private int playerId;
 

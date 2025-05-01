@@ -3,21 +3,24 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.Networking;
 using System.Collections;
+
 public class RegisterUI : MonoBehaviour
 {
     [Header("UI References")]
     public GameObject registerPanel;
     public TMP_InputField usernameInput;
     public TMP_Text statusText;
+
+    private Outline statusOutline;
+
     [Header("Buttons")]
     public Button registerButton;
-    public Button openButton;
-    public Button closeButton;
+
     [Header("Waiting Screen")]
     public WaitingScreenManager waitingScreenManager;
-    [Header("Server URL")]
-    private string registerUrl = "https://6c0a-213-109-232-105.ngrok-free.app/register.php";
 
+    [Header("Server URL")]
+    private string registerUrl = "https://24b4-213-109-232-105.ngrok-free.app/register.php";
 
     [System.Serializable]
     public class RegisterResponse
@@ -30,39 +33,47 @@ public class RegisterUI : MonoBehaviour
     {
         if (registerButton != null)
             registerButton.onClick.AddListener(OnRegisterClick);
-        if (openButton != null)
-            openButton.onClick.AddListener(OpenPanel);
-        if (closeButton != null)
-            closeButton.onClick.AddListener(ClosePanel);
+
         registerPanel.SetActive(true);
+
         if (statusText != null)
-            statusText.text = "Register please!";
-        if (waitingScreenManager != null)
         {
-            waitingScreenManager.HideWaitingScreen();
+            statusText.text = "Register please!";
+            statusOutline = statusText.GetComponent<Outline>();
+            if (statusOutline == null)
+                statusOutline = statusText.gameObject.AddComponent<Outline>();
         }
+
+        if (waitingScreenManager != null)
+            waitingScreenManager.HideWaitingScreen();
     }
+
     public void OpenPanel()
     {
         registerPanel.SetActive(true);
         ClearForm();
         statusText.text = "Register Please";
     }
+
     public void ClosePanel()
     {
         registerPanel.SetActive(false);
     }
+
     public void OnRegisterClick()
     {
         statusText.text = "Registering...";
         StartCoroutine(SendRegisterRequest());
     }
+
     IEnumerator SendRegisterRequest()
     {
         string username = usernameInput.text.Trim();
+
         if (string.IsNullOrEmpty(username))
         {
             statusText.text = "Please enter username.";
+            SetStatusColor(Color.red, Color.red);
             yield break;
         }
 
@@ -75,10 +86,9 @@ public class RegisterUI : MonoBehaviour
         if (www.result == UnityWebRequest.Result.Success)
         {
             string responseText = www.downloadHandler.text;
-            //Debug.Log("Register response: " + responseText);
 
-            bool parseSuccess = false;
             RegisterResponse response = null;
+            bool parseSuccess = false;
 
             try
             {
@@ -88,58 +98,65 @@ public class RegisterUI : MonoBehaviour
             catch (System.Exception e)
             {
                 Debug.LogError("JSON parsing error: " + e.Message);
-                parseSuccess = false;
             }
 
-            if (parseSuccess)
+            if (parseSuccess && response != null)
             {
-                if (response.error != null && !string.IsNullOrEmpty(response.error))
+                if (!string.IsNullOrEmpty(response.error))
                 {
                     statusText.text = "Error: " + response.error;
+                    SetStatusColor(Color.red, Color.red);
                 }
                 else if (response.player_id > 0)
                 {
                     SessionData.playerId = response.player_id;
-
                     statusText.text = "Successfully registered!";
+                    SetStatusColor(Color.green, Color.green);
                     yield return new WaitForSeconds(1.5f);
                     ClosePanel();
-
                     if (waitingScreenManager != null)
-                    {
                         waitingScreenManager.ShowWaitingScreen();
-                    }
                     else
-                    {
                         Debug.LogError("WaitingScreenManager reference is missing!");
-                    }
                 }
                 else
                 {
                     statusText.text = "Registration failed. Please try again.";
+                    SetStatusColor(Color.red, Color.red);
                 }
             }
             else
             {
-                // Handle cases where HTML error might be returned
                 if (responseText.Contains("exists") || responseText.Contains("taken"))
-                {
                     statusText.text = "Username already exists. Please choose another one.";
-                }
                 else
-                {
                     statusText.text = "Server error. Please try again.";
-                }
+
+                SetStatusColor(Color.red, Color.red);
             }
         }
         else
         {
             statusText.text = "Network error: " + www.error;
+            SetStatusColor(Color.red, Color.red);
         }
     }
 
     void ClearForm()
     {
         usernameInput.text = "";
+    }
+
+    void SetStatusColor(Color textColor, Color outlineColor)
+    {
+        if (statusText != null)
+            statusText.color = textColor;
+
+        if (statusOutline != null)
+        {
+            statusOutline.effectColor = outlineColor;
+            statusOutline.effectDistance = new Vector2(0.1f, -0.1f);
+            statusOutline.enabled = true;
+        }
     }
 }
