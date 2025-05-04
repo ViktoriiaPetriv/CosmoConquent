@@ -14,6 +14,14 @@ public class ScoreCalc : MonoBehaviour
     private List<PlayerData> players;
     private bool calculationDone = false;
 
+    [Header("UI Elements")]
+    [SerializeField] private ResultsWindow myResultsWindow;
+
+
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip clickSound;
+
     public void Start()
     {
 
@@ -29,7 +37,7 @@ public class ScoreCalc : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Game ID is not found ó PlayerPrefs.");
+            Debug.LogError("Game ID is not found ï¿½ PlayerPrefs.");
         }
     }
 
@@ -50,7 +58,7 @@ public class ScoreCalc : MonoBehaviour
 
     public IEnumerator GetPlayersDataFromServer(int gameId)
     {
-        string url = $"https://9ec1-213-109-232-105.ngrok-free.app/get_results.php?game_id={gameId}";
+        string url = $"https://89a7-213-109-232-105.ngrok-free.app/get_results.php?game_id={gameId}";
 
         using (UnityWebRequest www = UnityWebRequest.Get(url))
         {
@@ -181,6 +189,79 @@ public class ScoreCalc : MonoBehaviour
         Debug.Log($"Player(s) with the highest score: {string.Join(", ", winningPlayerNames)} with score: {maxScore}");
         StartCoroutine(UpdatePlayerScoresOnServer(players, teamScores));
         PopulateResultsTable(players, teamScores);
+        OpenResultsWindow(teamScores, winningTeams);
+    }
+
+    private void OpenResultsWindow(int[] scores, List<int> winningTeams){
+        string winnerText;
+
+        List<string> winningPlayerNames = winningTeams.Select(index => players[index].username).ToList();
+
+        if (winningPlayerNames.Count > 1)
+        {
+            winnerText = "Players " + string.Join(", ", winningPlayerNames) + " Win!";
+        }
+        else
+        {
+            winnerText = $"Player {winningPlayerNames[0]} Wins!";
+        }
+
+        myResultsWindow.gameObject.SetActive(true);
+        myResultsWindow.CloseButton.onClick.AddListener(CloseClicked);
+        myResultsWindow.winnerText.text = winnerText;
+
+        StartCoroutine(OpenWindowAnimation());
+        StartCoroutine(AnimateWinnerText());
+    }
+
+     private void CloseClicked(){
+        myResultsWindow.gameObject.SetActive(false);
+        PlayClickSound();
+    }
+
+    private void PlayClickSound()
+    {
+        if (audioSource != null && clickSound != null)
+        {
+            audioSource.PlayOneShot(clickSound);
+        }
+    }
+
+    private IEnumerator AnimateWinnerText()
+    {
+        Vector3 originalScale = myResultsWindow.winnerText.transform.localScale;
+        Color originalColor = myResultsWindow.winnerText.color;
+
+        while (myResultsWindow.gameObject.activeSelf)
+        {
+            float scaleFactor = Mathf.PingPong(Time.time * 0.2f, 0.1f) + 1f; 
+            myResultsWindow.winnerText.transform.localScale = originalScale * scaleFactor;
+
+            float colorValue = Mathf.PingPong(Time.time * 1.5f, 1f);  
+            Color color = Color.Lerp(Color.green, Color.yellow, colorValue);
+            myResultsWindow.winnerText.color = new Color(color.r, color.g, color.b, originalColor.a);
+
+            yield return null;
+        }
+    }
+
+    private IEnumerator OpenWindowAnimation()
+    {
+        Vector3 originalScale = myResultsWindow.transform.localScale;
+        myResultsWindow.transform.localScale = Vector3.zero; 
+
+        float duration = 0.25f; 
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            float scale = Mathf.Lerp(0f, 1f, elapsedTime / duration);
+            myResultsWindow.transform.localScale = originalScale * scale;
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        myResultsWindow.transform.localScale = originalScale;
     }
 
     void PopulateResultsTable(List<PlayerData> players, int[] scores)
@@ -213,7 +294,7 @@ public class ScoreCalc : MonoBehaviour
             form.AddField("player_id", players[i].player_id);
             form.AddField("score", scores[i]);
 
-            using (UnityWebRequest www = UnityWebRequest.Post("https://9ec1-213-109-232-105.ngrok-free.app/update_score.php", form))
+            using (UnityWebRequest www = UnityWebRequest.Post("https://89a7-213-109-232-105.ngrok-free.app/update_score.php", form))
             {
                 yield return www.SendWebRequest();
 
