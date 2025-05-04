@@ -8,7 +8,7 @@ using System.Collections;
 
 public class ScoreCalc : MonoBehaviour
 {
-    private int gameId; 
+    private int gameId;
     public Transform resultsTableParent;
     public GameObject resultRowPrefab;
     private List<PlayerData> players;
@@ -16,7 +16,7 @@ public class ScoreCalc : MonoBehaviour
 
     public void Start()
     {
-        
+
 
     }
 
@@ -42,7 +42,7 @@ public class ScoreCalc : MonoBehaviour
             if (calculationDone)
                 break;
 
-            yield return new WaitForSeconds(5f); 
+            yield return new WaitForSeconds(5f);
         }
     }
 
@@ -50,7 +50,7 @@ public class ScoreCalc : MonoBehaviour
 
     public IEnumerator GetPlayersDataFromServer(int gameId)
     {
-        string url = $"https://6c0a-213-109-232-105.ngrok-free.app/get_results.php?game_id={gameId}";
+        string url = $"https://9ec1-213-109-232-105.ngrok-free.app/get_results.php?game_id={gameId}";
 
         using (UnityWebRequest www = UnityWebRequest.Get(url))
         {
@@ -171,18 +171,19 @@ public class ScoreCalc : MonoBehaviour
         {
             if (teamScores[team] == maxScore)
             {
-                winningTeams.Add(team + 1);
+                winningTeams.Add(team);
             }
 
-            Debug.Log($"Team {team + 1} total score: {teamScores[team]}");
+            Debug.Log($"Player {players[team].username} total score: {teamScores[team]}");
         }
 
-        Debug.Log($"Team(s) with the highest score: {string.Join(", ", winningTeams)} with score: {maxScore}");
+        List<string> winningPlayerNames = winningTeams.Select(index => players[index].username).ToList();
+        Debug.Log($"Player(s) with the highest score: {string.Join(", ", winningPlayerNames)} with score: {maxScore}");
         StartCoroutine(UpdatePlayerScoresOnServer(players, teamScores));
-        PopulateResultsTable(teamScores);
+        PopulateResultsTable(players, teamScores);
     }
 
-    void PopulateResultsTable(int[] scores)
+    void PopulateResultsTable(List<PlayerData> players, int[] scores)
     {
         foreach (Transform child in resultsTableParent)
         {
@@ -193,14 +194,14 @@ public class ScoreCalc : MonoBehaviour
         TextMeshProUGUI teamHeader = headerRow.transform.GetChild(0).GetComponent<TextMeshProUGUI>();
         TextMeshProUGUI pointsHeader = headerRow.transform.GetChild(1).GetComponent<TextMeshProUGUI>();
 
-        teamHeader.text = "TEAM";
+        teamHeader.text = "PLAYER";
         pointsHeader.text = "POINTS";
 
-        for (int team = 0; team < scores.Length; team++)
+        for (int i = 0; i < scores.Length; i++)
         {
             GameObject row = Instantiate(resultRowPrefab, resultsTableParent);
-            row.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = $"Team {team + 1}";
-            row.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = scores[team].ToString();
+            row.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = players[i].username;
+            row.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = scores[i].ToString();
         }
     }
 
@@ -212,7 +213,7 @@ public class ScoreCalc : MonoBehaviour
             form.AddField("player_id", players[i].player_id);
             form.AddField("score", scores[i]);
 
-            using (UnityWebRequest www = UnityWebRequest.Post("https://6c0a-213-109-232-105.ngrok-free.app/update_score.php", form))
+            using (UnityWebRequest www = UnityWebRequest.Post("https://9ec1-213-109-232-105.ngrok-free.app/update_score.php", form))
             {
                 yield return www.SendWebRequest();
 

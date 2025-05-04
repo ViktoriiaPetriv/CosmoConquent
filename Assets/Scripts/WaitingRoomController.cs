@@ -47,7 +47,7 @@ public class WaitingScreenManager : MonoBehaviour
         if (connectedPlayers >= REQUIRED_PLAYERS)
         {
             timerObject.SetActive(true);
-            notEnoughPlayersObject.SetActive(true); 
+            notEnoughPlayersObject.SetActive(true);
             statusText.text = $"Connected: {connectedPlayers}/5";
             statusText.color = Color.green;
         }
@@ -131,7 +131,7 @@ public class WaitingScreenManager : MonoBehaviour
         form.AddField("player_id", playerId);
         form.AddField("force_start", "true");
 
-        UnityWebRequest www = UnityWebRequest.Post("https://24b4-213-109-232-105.ngrok-free.app/start_game.php", form);
+        UnityWebRequest www = UnityWebRequest.Post("https://9ec1-213-109-232-105.ngrok-free.app/start_game.php", form);
         yield return www.SendWebRequest();
 
         if (www.result == UnityWebRequest.Result.Success)
@@ -147,7 +147,7 @@ public class WaitingScreenManager : MonoBehaviour
 
     private IEnumerator CheckStartGame()
     {
-        
+
         timerObject.SetActive(false);
         notEnoughPlayersObject.SetActive(true);
         bool wasTimerVisible = false;
@@ -161,7 +161,7 @@ public class WaitingScreenManager : MonoBehaviour
             WWWForm form = new WWWForm();
             form.AddField("player_id", playerId);
 
-            UnityWebRequest www = UnityWebRequest.Post("https://24b4-213-109-232-105.ngrok-free.app/start_game.php", form);
+            UnityWebRequest www = UnityWebRequest.Post("https://9ec1-213-109-232-105.ngrok-free.app/start_game.php", form);
             yield return www.SendWebRequest();
 
             string responseText = www.downloadHandler.text;
