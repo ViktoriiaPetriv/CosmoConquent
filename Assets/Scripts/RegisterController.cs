@@ -16,6 +16,10 @@ public class RegisterUI : MonoBehaviour
     [Header("Buttons")]
     public Button registerButton;
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip clickSound;
+
     [Header("Waiting Screen")]
     public WaitingScreenManager waitingScreenManager;
 
@@ -62,6 +66,11 @@ public class RegisterUI : MonoBehaviour
 
     public void OnRegisterClick()
     {
+        if (audioSource != null && clickSound != null)
+        {
+            audioSource.PlayOneShot(clickSound);
+        }
+
         statusText.text = "Registering...";
         StartCoroutine(SendRegisterRequest());
     }
