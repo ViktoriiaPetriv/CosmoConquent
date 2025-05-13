@@ -35,7 +35,7 @@ public class InputDronesScript : MonoBehaviour
     public float droneSpeed = 500f;         // швидкість (пікс/сек)
     public float spawnInterval = 0.1f;      // затримка між спавном
 
-    private string submitUrl = "https://89a7-213-109-232-105.ngrok-free.app/submit_move.php";
+    private string submitUrl = "https://0464-213-109-233-107.ngrok-free.app/submit_move.php";
     private int gameId;
     private int playerId;
 

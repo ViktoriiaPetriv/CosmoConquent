@@ -9,10 +9,14 @@ using System.Collections;
 public class ScoreCalc : MonoBehaviour
 {
     private int gameId;
+    private int localPlayerId; 
+
     public Transform resultsTableParent;
     public GameObject resultRowPrefab;
     private List<PlayerData> players;
     private bool calculationDone = false;
+
+    private List<int> winningTeamsGlobal;
 
     [Header("UI Elements")]
     [SerializeField] private ResultsWindow myResultsWindow;
@@ -22,14 +26,24 @@ public class ScoreCalc : MonoBehaviour
     public AudioSource audioSource;
     public AudioClip clickSound;
 
+    [Header("Planets")]
+    public List<GameObject> planetObjects;
+
+    [Header("Effects")]
+    public GameObject planetWinEffectPrefab;
+
+
+
     public void Start()
     {
 
 
     }
 
+
     public void BeginCheckingMoves()
     {
+        localPlayerId = SessionData.playerId;
         gameId = SessionData.gameId;
         if (gameId != -1)
         {
@@ -58,7 +72,7 @@ public class ScoreCalc : MonoBehaviour
 
     public IEnumerator GetPlayersDataFromServer(int gameId)
     {
-        string url = $"https://89a7-213-109-232-105.ngrok-free.app/get_results.php?game_id={gameId}";
+        string url = $"https://0464-213-109-233-107.ngrok-free.app/get_results.php?game_id={gameId}";
 
         using (UnityWebRequest www = UnityWebRequest.Get(url))
         {
@@ -189,6 +203,7 @@ public class ScoreCalc : MonoBehaviour
         Debug.Log($"Player(s) with the highest score: {string.Join(", ", winningPlayerNames)} with score: {maxScore}");
         StartCoroutine(UpdatePlayerScoresOnServer(players, teamScores));
         PopulateResultsTable(players, teamScores);
+        winningTeamsGlobal = winningTeams;
         OpenResultsWindow(teamScores, winningTeams);
     }
 
@@ -214,10 +229,44 @@ public class ScoreCalc : MonoBehaviour
         StartCoroutine(AnimateWinnerText());
     }
 
-     private void CloseClicked(){
+    private void ShowWinningPlanetsEffectsForWinners(List<int> winnerIndices)
+    {
+        foreach (int winnerIndex in winnerIndices)
+        {
+            int[] drones = new int[]
+            {
+                players[winnerIndex].kronus,
+                players[winnerIndex].lyrion,
+                players[winnerIndex].mystara,
+                players[winnerIndex].eclipsia,
+                players[winnerIndex].fiora
+            };
+
+            for (int i = 0; i < drones.Length; i++)
+            {
+                if (drones[i] > 0 && i < planetObjects.Count)
+                {
+                    GameObject effect = Instantiate(planetWinEffectPrefab, planetObjects[i].transform.position + Vector3.up * 2f, Quaternion.identity);
+                }
+            }
+        }
+    }
+
+     private void CloseClicked()
+    {
         myResultsWindow.gameObject.SetActive(false);
         PlayClickSound();
+
+        if (winningTeamsGlobal.Any(index => players[index].player_id == localPlayerId))
+        {
+            var localWinnerIndices = winningTeamsGlobal
+                .Where(index => players[index].player_id == localPlayerId)
+                .ToList();
+
+            ShowWinningPlanetsEffectsForWinners(localWinnerIndices);
+        }
     }
+
 
     private void PlayClickSound()
     {
@@ -277,6 +326,10 @@ public class ScoreCalc : MonoBehaviour
 
         teamHeader.text = "PLAYER";
         pointsHeader.text = "POINTS";
+        teamHeader.color = Color.green;
+        pointsHeader.color = Color.green;
+        teamHeader.fontStyle = FontStyles.Underline;
+        pointsHeader.fontStyle = FontStyles.Underline;
 
         for (int i = 0; i < scores.Length; i++)
         {
@@ -294,7 +347,7 @@ public class ScoreCalc : MonoBehaviour
             form.AddField("player_id", players[i].player_id);
             form.AddField("score", scores[i]);
 
-            using (UnityWebRequest www = UnityWebRequest.Post("https://89a7-213-109-232-105.ngrok-free.app/update_score.php", form))
+            using (UnityWebRequest www = UnityWebRequest.Post("https://0464-213-109-233-107.ngrok-free.app/update_score.php", form))
             {
                 yield return www.SendWebRequest();
 
