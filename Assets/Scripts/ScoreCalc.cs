@@ -5,11 +5,13 @@ using System;
 using UnityEngine.Networking;
 using TMPro;
 using System.Collections;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class ScoreCalc : MonoBehaviour
 {
     private int gameId;
-    private int localPlayerId; 
+    private int localPlayerId;
 
     public Transform resultsTableParent;
     public GameObject resultRowPrefab;
@@ -20,7 +22,7 @@ public class ScoreCalc : MonoBehaviour
 
     [Header("UI Elements")]
     [SerializeField] private ResultsWindow myResultsWindow;
-
+    [SerializeField] private Button exitButton; // нове поле для кнопки Exit
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -32,14 +34,16 @@ public class ScoreCalc : MonoBehaviour
     [Header("Effects")]
     public GameObject planetWinEffectPrefab;
 
-
-
     public void Start()
     {
-
-
+        if (exitButton != null)
+        {
+            exitButton.onClick.AddListener(OnExitClicked);
+            exitButton.gameObject.SetActive(false); // сховати кнопку при старті
+        }
+        if (exitButton != null)
+            exitButton.onClick.AddListener(OnExitClicked);
     }
-
 
     public void BeginCheckingMoves()
     {
@@ -51,7 +55,7 @@ public class ScoreCalc : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Game ID is not found � PlayerPrefs.");
+            Debug.LogError("Game ID is not found in PlayerPrefs.");
         }
     }
 
@@ -67,8 +71,6 @@ public class ScoreCalc : MonoBehaviour
             yield return new WaitForSeconds(5f);
         }
     }
-
-
 
     public IEnumerator GetPlayersDataFromServer(int gameId)
     {
@@ -92,7 +94,6 @@ public class ScoreCalc : MonoBehaviour
                     (p.kronus + p.lyrion + p.mystara + p.eclipsia + p.fiora) > 0
                 );
 
-
                 if (allPlayersSubmitted && !calculationDone)
                 {
                     CalculateTeamScores(players);
@@ -105,9 +106,6 @@ public class ScoreCalc : MonoBehaviour
             }
         }
     }
-
-
-
 
     [Serializable]
     public class PlayerData
@@ -122,20 +120,17 @@ public class ScoreCalc : MonoBehaviour
         public int score;
     }
 
-
     [Serializable]
     public class PlayerDataList
     {
         public PlayerData[] players;
     }
 
-
     [Serializable]
     public class PlayerDataListWrapper
     {
         public List<PlayerData> players;
     }
-
 
     public void CalculateTeamScores(List<PlayerData> players)
     {
@@ -207,7 +202,10 @@ public class ScoreCalc : MonoBehaviour
         OpenResultsWindow(teamScores, winningTeams);
     }
 
-    private void OpenResultsWindow(int[] scores, List<int> winningTeams){
+    private void OpenResultsWindow(int[] scores, List<int> winningTeams)
+    {
+        if (exitButton != null)
+            exitButton.gameObject.SetActive(false);
         string winnerText;
 
         List<string> winningPlayerNames = winningTeams.Select(index => players[index].username).ToList();
@@ -252,8 +250,10 @@ public class ScoreCalc : MonoBehaviour
         }
     }
 
-     private void CloseClicked()
+    private void CloseClicked()
     {
+        if (exitButton != null)
+            exitButton.gameObject.SetActive(true);
         myResultsWindow.gameObject.SetActive(false);
         PlayClickSound();
 
@@ -267,6 +267,15 @@ public class ScoreCalc : MonoBehaviour
         }
     }
 
+    private void OnExitClicked()
+    {
+        Debug.Log("Exit button clicked in ResultsWindow");
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
 
     private void PlayClickSound()
     {
@@ -283,10 +292,10 @@ public class ScoreCalc : MonoBehaviour
 
         while (myResultsWindow.gameObject.activeSelf)
         {
-            float scaleFactor = Mathf.PingPong(Time.time * 0.2f, 0.1f) + 1f; 
+            float scaleFactor = Mathf.PingPong(Time.time * 0.2f, 0.1f) + 1f;
             myResultsWindow.winnerText.transform.localScale = originalScale * scaleFactor;
 
-            float colorValue = Mathf.PingPong(Time.time * 1.5f, 1f);  
+            float colorValue = Mathf.PingPong(Time.time * 1.5f, 1f);
             Color color = Color.Lerp(Color.green, Color.yellow, colorValue);
             myResultsWindow.winnerText.color = new Color(color.r, color.g, color.b, originalColor.a);
 
@@ -297,9 +306,9 @@ public class ScoreCalc : MonoBehaviour
     private IEnumerator OpenWindowAnimation()
     {
         Vector3 originalScale = myResultsWindow.transform.localScale;
-        myResultsWindow.transform.localScale = Vector3.zero; 
+        myResultsWindow.transform.localScale = Vector3.zero;
 
-        float duration = 0.25f; 
+        float duration = 0.25f;
         float elapsedTime = 0f;
 
         while (elapsedTime < duration)
@@ -358,5 +367,4 @@ public class ScoreCalc : MonoBehaviour
             }
         }
     }
-
 }
