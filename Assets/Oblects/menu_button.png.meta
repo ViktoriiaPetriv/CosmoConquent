@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 3c1d41fd0594e3d47a32d7902788536c
+guid: e27a01c3530a0474dada45cd37a6767d
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3245334402717655701
-    second: iconka_0
+      213: 2598184430482478853
+    second: menu_button_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,7 +100,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: iconka_0
+      name: menu_button_0
       rect:
         serializedVersion: 2
         x: 0
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 592275bd17eb90d20800000000000000
-      internalID: 3245334402717655701
+      spriteID: 507dbd749fa9e0420800000000000000
+      internalID: 2598184430482478853
       vertices: []
       indices: 
       edges: []
@@ -134,8 +134,7 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable:
-      iconka_0: 3245334402717655701
+    nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

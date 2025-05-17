@@ -6,10 +6,10 @@ using UnityEngine.SceneManagement;
 public class MainMenuManager : MonoBehaviour
 {
     [Header("UI References")]
-    public GameObject mainMenuPanel;           // панель головного меню
-    public Button playButton;                  // кнопка Play
-    public Button exitButton;                  // кнопка Exit
-    public TMP_Text titleText;                 // заголовок гри
+    public GameObject mainMenuPanel;          
+    public Button playButton;                 
+    public Button exitButton;                  
+    public TMP_Text titleText;                 
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -20,11 +20,9 @@ public class MainMenuManager : MonoBehaviour
 
     void Start()
     {
-        // переконайся, що меню активне при старті
         if (mainMenuPanel != null)
             mainMenuPanel.SetActive(true);
 
-        // призначення кнопок
         if (playButton != null)
             playButton.onClick.AddListener(OnPlayClicked);
 
@@ -35,14 +33,12 @@ public class MainMenuManager : MonoBehaviour
     private void OnPlayClicked()
     {
         PlayClickSound();
-        // завантаження сцени гри
         SceneManager.LoadScene(gameSceneName);
     }
 
     private void OnExitClicked()
     {
         PlayClickSound();
-        // вихід з гри (працює тільки у білді)
         Application.Quit();
         Debug.Log("Game exited");
     }

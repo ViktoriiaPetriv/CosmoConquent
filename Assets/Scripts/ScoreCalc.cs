@@ -22,7 +22,7 @@ public class ScoreCalc : MonoBehaviour
 
     [Header("UI Elements")]
     [SerializeField] private ResultsWindow myResultsWindow;
-    [SerializeField] private Button exitButton; // нове поле для кнопки Exit
+    [SerializeField] private Button menuButton; // нове поле для кнопки menu
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -36,13 +36,13 @@ public class ScoreCalc : MonoBehaviour
 
     public void Start()
     {
-        if (exitButton != null)
+        if (menuButton != null)
         {
-            exitButton.onClick.AddListener(OnExitClicked);
-            exitButton.gameObject.SetActive(false); // сховати кнопку при старті
+            menuButton.onClick.AddListener(OnMenuClicked);
+            menuButton.gameObject.SetActive(false); // сховати кнопку при старті
         }
-        if (exitButton != null)
-            exitButton.onClick.AddListener(OnExitClicked);
+        if (menuButton != null)
+            menuButton.onClick.AddListener(OnMenuClicked);
     }
 
     public void BeginCheckingMoves()
@@ -204,8 +204,8 @@ public class ScoreCalc : MonoBehaviour
 
     private void OpenResultsWindow(int[] scores, List<int> winningTeams)
     {
-        if (exitButton != null)
-            exitButton.gameObject.SetActive(false);
+        if (menuButton != null)
+            menuButton.gameObject.SetActive(false);
         string winnerText;
 
         List<string> winningPlayerNames = winningTeams.Select(index => players[index].username).ToList();
@@ -252,8 +252,8 @@ public class ScoreCalc : MonoBehaviour
 
     private void CloseClicked()
     {
-        if (exitButton != null)
-            exitButton.gameObject.SetActive(true);
+        if (menuButton != null)
+            menuButton.gameObject.SetActive(true);
         myResultsWindow.gameObject.SetActive(false);
         PlayClickSound();
 
@@ -267,14 +267,10 @@ public class ScoreCalc : MonoBehaviour
         }
     }
 
-    private void OnExitClicked()
+    private void OnMenuClicked()
     {
-        Debug.Log("Exit button clicked in ResultsWindow");
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        PlayClickSound();
+        SceneManager.LoadScene("MainMenu");
     }
 
     private void PlayClickSound()
