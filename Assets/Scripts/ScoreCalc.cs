@@ -227,25 +227,23 @@ public class ScoreCalc : MonoBehaviour
         StartCoroutine(AnimateWinnerText());
     }
 
-    private void ShowWinningPlanetsEffectsForWinners(List<int> winnerIndices)
+    private void ShowWinningPlanetsEffectsForPlayer(int playerIndex)
     {
-        foreach (int winnerIndex in winnerIndices)
+        int[] drones = new int[]
         {
-            int[] drones = new int[]
-            {
-                players[winnerIndex].kronus,
-                players[winnerIndex].lyrion,
-                players[winnerIndex].mystara,
-                players[winnerIndex].eclipsia,
-                players[winnerIndex].fiora
-            };
+            players[playerIndex].kronus,
+            players[playerIndex].lyrion,
+            players[playerIndex].mystara,
+            players[playerIndex].eclipsia,
+            players[playerIndex].fiora
+        };
 
-            for (int i = 0; i < drones.Length; i++)
+        for (int i = 0; i < drones.Length; i++)
+        {
+            if (drones[i] > 0 && i < planetObjects.Count)
             {
-                if (drones[i] > 0 && i < planetObjects.Count)
-                {
-                    GameObject effect = Instantiate(planetWinEffectPrefab, planetObjects[i].transform.position + Vector3.up * 2f, Quaternion.identity);
-                }
+                GameObject effect = Instantiate(planetWinEffectPrefab, 
+                    planetObjects[i].transform.position, Quaternion.identity);
             }
         }
     }
@@ -257,14 +255,15 @@ public class ScoreCalc : MonoBehaviour
         myResultsWindow.gameObject.SetActive(false);
         PlayClickSound();
 
-        if (winningTeamsGlobal.Any(index => players[index].player_id == localPlayerId))
+       foreach (int winnerIndex in winningTeamsGlobal)
         {
-            var localWinnerIndices = winningTeamsGlobal
-                .Where(index => players[index].player_id == localPlayerId)
-                .ToList();
-
-            ShowWinningPlanetsEffectsForWinners(localWinnerIndices);
+            if (players[winnerIndex].player_id == localPlayerId)
+            {
+                ShowWinningPlanetsEffectsForPlayer(winnerIndex);
+                break;
+            }
         }
+
     }
 
     private void OnMenuClicked()
