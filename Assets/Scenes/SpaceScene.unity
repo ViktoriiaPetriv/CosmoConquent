@@ -5542,7 +5542,7 @@ MonoBehaviour:
   resultsTableParent: {fileID: 357549513}
   resultRowPrefab: {fileID: 1115562427159638797, guid: 34791a97ae2e44122ad924f3554d25f4, type: 3}
   myResultsWindow: {fileID: 216063796}
-  exitButton: {fileID: 1133110100}
+  menuButton: {fileID: 1133110100}
   audioSource: {fileID: 2036653473}
   clickSound: {fileID: 8300000, guid: 24d73765699ce3e46bb23cabc3a46494, type: 3}
   planetObjects:
