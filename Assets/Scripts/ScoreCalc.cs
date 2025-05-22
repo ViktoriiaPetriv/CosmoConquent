@@ -5,31 +5,49 @@ using System;
 using UnityEngine.Networking;
 using TMPro;
 using System.Collections;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class ScoreCalc : MonoBehaviour
 {
     private int gameId;
+    private int localPlayerId;
+
     public Transform resultsTableParent;
     public GameObject resultRowPrefab;
     private List<PlayerData> players;
     private bool calculationDone = false;
 
+    private List<int> winningTeamsGlobal;
+
     [Header("UI Elements")]
     [SerializeField] private ResultsWindow myResultsWindow;
-
+    [SerializeField] private Button menuButton; // нове поле для кнопки menu
 
     [Header("Audio")]
     public AudioSource audioSource;
     public AudioClip clickSound;
 
+    [Header("Planets")]
+    public List<GameObject> planetObjects;
+
+    [Header("Effects")]
+    public GameObject planetWinEffectPrefab;
+
     public void Start()
     {
-
-
+        if (menuButton != null)
+        {
+            menuButton.onClick.AddListener(OnMenuClicked);
+            menuButton.gameObject.SetActive(false); // сховати кнопку при старті
+        }
+        if (menuButton != null)
+            menuButton.onClick.AddListener(OnMenuClicked);
     }
 
     public void BeginCheckingMoves()
     {
+        localPlayerId = SessionData.playerId;
         gameId = SessionData.gameId;
         if (gameId != -1)
         {
@@ -37,7 +55,7 @@ public class ScoreCalc : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Game ID is not found � PlayerPrefs.");
+            Debug.LogError("Game ID is not found in PlayerPrefs.");
         }
     }
 
@@ -54,11 +72,9 @@ public class ScoreCalc : MonoBehaviour
         }
     }
 
-
-
     public IEnumerator GetPlayersDataFromServer(int gameId)
     {
-        string url = $"https://89a7-213-109-232-105.ngrok-free.app/get_results.php?game_id={gameId}";
+        string url = $"https://unity-server-sdfo.onrender.com/get_results.php?game_id={gameId}";
 
         using (UnityWebRequest www = UnityWebRequest.Get(url))
         {
@@ -78,7 +94,6 @@ public class ScoreCalc : MonoBehaviour
                     (p.kronus + p.lyrion + p.mystara + p.eclipsia + p.fiora) > 0
                 );
 
-
                 if (allPlayersSubmitted && !calculationDone)
                 {
                     CalculateTeamScores(players);
@@ -91,9 +106,6 @@ public class ScoreCalc : MonoBehaviour
             }
         }
     }
-
-
-
 
     [Serializable]
     public class PlayerData
@@ -108,20 +120,17 @@ public class ScoreCalc : MonoBehaviour
         public int score;
     }
 
-
     [Serializable]
     public class PlayerDataList
     {
         public PlayerData[] players;
     }
 
-
     [Serializable]
     public class PlayerDataListWrapper
     {
         public List<PlayerData> players;
     }
-
 
     public void CalculateTeamScores(List<PlayerData> players)
     {
@@ -189,10 +198,14 @@ public class ScoreCalc : MonoBehaviour
         Debug.Log($"Player(s) with the highest score: {string.Join(", ", winningPlayerNames)} with score: {maxScore}");
         StartCoroutine(UpdatePlayerScoresOnServer(players, teamScores));
         PopulateResultsTable(players, teamScores);
+        winningTeamsGlobal = winningTeams;
         OpenResultsWindow(teamScores, winningTeams);
     }
 
-    private void OpenResultsWindow(int[] scores, List<int> winningTeams){
+    private void OpenResultsWindow(int[] scores, List<int> winningTeams)
+    {
+        if (menuButton != null)
+            menuButton.gameObject.SetActive(false);
         string winnerText;
 
         List<string> winningPlayerNames = winningTeams.Select(index => players[index].username).ToList();
@@ -214,9 +227,50 @@ public class ScoreCalc : MonoBehaviour
         StartCoroutine(AnimateWinnerText());
     }
 
-     private void CloseClicked(){
+    private void ShowWinningPlanetsEffectsForWinners(List<int> winnerIndices)
+    {
+        foreach (int winnerIndex in winnerIndices)
+        {
+            int[] drones = new int[]
+            {
+                players[winnerIndex].kronus,
+                players[winnerIndex].lyrion,
+                players[winnerIndex].mystara,
+                players[winnerIndex].eclipsia,
+                players[winnerIndex].fiora
+            };
+
+            for (int i = 0; i < drones.Length; i++)
+            {
+                if (drones[i] > 0 && i < planetObjects.Count)
+                {
+                    GameObject effect = Instantiate(planetWinEffectPrefab, planetObjects[i].transform.position + Vector3.up * 2f, Quaternion.identity);
+                }
+            }
+        }
+    }
+
+    private void CloseClicked()
+    {
+        if (menuButton != null)
+            menuButton.gameObject.SetActive(true);
         myResultsWindow.gameObject.SetActive(false);
         PlayClickSound();
+
+        if (winningTeamsGlobal.Any(index => players[index].player_id == localPlayerId))
+        {
+            var localWinnerIndices = winningTeamsGlobal
+                .Where(index => players[index].player_id == localPlayerId)
+                .ToList();
+
+            ShowWinningPlanetsEffectsForWinners(localWinnerIndices);
+        }
+    }
+
+    private void OnMenuClicked()
+    {
+        PlayClickSound();
+        SceneManager.LoadScene("MainMenu");
     }
 
     private void PlayClickSound()
@@ -234,10 +288,10 @@ public class ScoreCalc : MonoBehaviour
 
         while (myResultsWindow.gameObject.activeSelf)
         {
-            float scaleFactor = Mathf.PingPong(Time.time * 0.2f, 0.1f) + 1f; 
+            float scaleFactor = Mathf.PingPong(Time.time * 0.2f, 0.1f) + 1f;
             myResultsWindow.winnerText.transform.localScale = originalScale * scaleFactor;
 
-            float colorValue = Mathf.PingPong(Time.time * 1.5f, 1f);  
+            float colorValue = Mathf.PingPong(Time.time * 1.5f, 1f);
             Color color = Color.Lerp(Color.green, Color.yellow, colorValue);
             myResultsWindow.winnerText.color = new Color(color.r, color.g, color.b, originalColor.a);
 
@@ -248,9 +302,9 @@ public class ScoreCalc : MonoBehaviour
     private IEnumerator OpenWindowAnimation()
     {
         Vector3 originalScale = myResultsWindow.transform.localScale;
-        myResultsWindow.transform.localScale = Vector3.zero; 
+        myResultsWindow.transform.localScale = Vector3.zero;
 
-        float duration = 0.25f; 
+        float duration = 0.25f;
         float elapsedTime = 0f;
 
         while (elapsedTime < duration)
@@ -277,6 +331,10 @@ public class ScoreCalc : MonoBehaviour
 
         teamHeader.text = "PLAYER";
         pointsHeader.text = "POINTS";
+        teamHeader.color = Color.green;
+        pointsHeader.color = Color.green;
+        teamHeader.fontStyle = FontStyles.Underline;
+        pointsHeader.fontStyle = FontStyles.Underline;
 
         for (int i = 0; i < scores.Length; i++)
         {
@@ -294,7 +352,7 @@ public class ScoreCalc : MonoBehaviour
             form.AddField("player_id", players[i].player_id);
             form.AddField("score", scores[i]);
 
-            using (UnityWebRequest www = UnityWebRequest.Post("https://89a7-213-109-232-105.ngrok-free.app/update_score.php", form))
+            using (UnityWebRequest www = UnityWebRequest.Post("https://unity-server-sdfo.onrender.com/update_score.php", form))
             {
                 yield return www.SendWebRequest();
 
@@ -305,5 +363,4 @@ public class ScoreCalc : MonoBehaviour
             }
         }
     }
-
 }

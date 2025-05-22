@@ -24,7 +24,7 @@ public class RegisterUI : MonoBehaviour
     public WaitingScreenManager waitingScreenManager;
 
     [Header("Server URL")]
-    private string registerUrl = "https://89a7-213-109-232-105.ngrok-free.app/register.php";
+    private string registerUrl = "https://unity-server-sdfo.onrender.com/register.php";
 
     [System.Serializable]
     public class RegisterResponse
